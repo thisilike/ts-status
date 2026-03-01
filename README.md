@@ -1,6 +1,6 @@
 # ts-status
 
-NDJSON bridge for the TeamSpeak Remote Apps WebSocket API.
+NDJSON bridge for the TeamSpeak Remote Apps WebSocket API. Primarily serves as the TeamSpeak connector for [dms-plugin-teamspeak](https://github.com/thisilike/dms-plugin-teamspeak).
 
 Connects to TeamSpeak's local WebSocket, tracks server/channel/client state, and emits newline-delimited JSON on stdout whenever state changes. Designed to be consumed by status bar widgets, scripts, or any tool that can read NDJSON.
 
