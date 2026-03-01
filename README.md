@@ -12,18 +12,10 @@ Connects to TeamSpeak's local WebSocket, tracks server/channel/client state, and
 yay -S ts-status
 ```
 
-**go install:**
+**Go:**
 
 ```
-go install github.com/thisilike/ts-status@latest
-```
-
-**Manual:**
-
-```
-git clone https://github.com/thisilike/ts-status.git
-cd ts-status
-go build -o ts-status .
+go install github.com/thisilike/ts-status@latest && sudo install ~/go/bin/ts-status /usr/local/bin/
 ```
 
 ## Usage
