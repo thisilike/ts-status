@@ -15,6 +15,8 @@ import (
 	"github.com/thisilike/ts-status/internal/storage"
 )
 
+var version = "dev"
+
 const (
 	resyncInterval = 30 * time.Second
 	reconnectDelay = 2 * time.Second
@@ -117,9 +119,16 @@ func emitError(message string) {
 }
 
 func main() {
+	showVersion := flag.Bool("v", false, "Print version and exit")
+	flag.BoolVar(showVersion, "version", false, "Print version and exit")
 	addr := flag.String("addr", "ws://localhost:5899", "TeamSpeak Remote Apps WebSocket address")
 	apiKeyPath := flag.String("apikey-path", "data/status_apikey.txt", "Path to persist the API key")
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Println("ts-status " + version)
+		return
+	}
 
 	state := status.NewAppState()
 	msgCh := make(chan connection.RawMessage, 64)
