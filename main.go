@@ -15,7 +15,7 @@ import (
 	"github.com/thisilike/ts-status/internal/storage"
 )
 
-var version = "dev"
+const version = "1.0.0"
 
 const (
 	resyncInterval = 30 * time.Second
@@ -24,7 +24,7 @@ const (
 
 var authParams = connection.AuthParams{
 	Identifier:  "net.thisilike.tsstatus",
-	Version:     "1.0.0",
+	Version:     version,
 	Name:        "TS Status",
 	Description: "Headless NDJSON status output for TeamSpeak",
 }
