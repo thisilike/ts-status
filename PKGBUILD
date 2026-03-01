@@ -1,4 +1,4 @@
-# Maintainer: thisilike
+# Maintainer: thisilike <tobias@thisilike.xyz>
 pkgname=ts-status-git
 pkgver=1.0.0
 pkgrel=1
