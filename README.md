@@ -9,7 +9,7 @@ Connects to TeamSpeak's local WebSocket, tracks server/channel/client state, and
 **AUR:**
 
 ```
-yay -S ts-status
+yay -S ts-status-git
 ```
 
 **Go:**
