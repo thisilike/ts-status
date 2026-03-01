@@ -6,12 +6,6 @@ Connects to TeamSpeak's local WebSocket, tracks server/channel/client state, and
 
 ## Install
 
-**AUR:**
-
-```
-yay -S ts-status-git
-```
-
 **Go:**
 
 ```
