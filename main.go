@@ -10,9 +10,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/thisilike/ts6-status/internal/connection"
-	"github.com/thisilike/ts6-status/internal/status"
-	"github.com/thisilike/ts6-status/internal/storage"
+	"github.com/thisilike/ts-status/internal/connection"
+	"github.com/thisilike/ts-status/internal/status"
+	"github.com/thisilike/ts-status/internal/storage"
 )
 
 const (
@@ -21,10 +21,10 @@ const (
 )
 
 var authParams = connection.AuthParams{
-	Identifier:  "net.thisilike.ts6statusjson",
+	Identifier:  "net.thisilike.tsstatus",
 	Version:     "1.0.0",
-	Name:        "TS6 Status JSON",
-	Description: "Headless NDJSON status output for TeamSpeak 6",
+	Name:        "TS Status",
+	Description: "Headless NDJSON status output for TeamSpeak",
 }
 
 type clientJSON struct {
@@ -173,12 +173,12 @@ func connManager(ctx context.Context, addr, apiKeyPath string, msgCh chan<- conn
 
 		apiKey, _ := storage.LoadAPIKey(apiKeyPath)
 
-		fmt.Fprintf(os.Stderr, "ts6-status: connecting to %s\n", addr)
+		fmt.Fprintf(os.Stderr, "ts-status: connecting to %s\n", addr)
 		client, err := connection.NewClient(addr, func(msg connection.RawMessage) {
 			msgCh <- msg
 		})
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "ts6-status: connection failed: %v\n", err)
+			fmt.Fprintf(os.Stderr, "ts-status: connection failed: %v\n", err)
 			emitError(fmt.Sprintf("connection failed: %v", err))
 			if !waitOrDone(ctx, reconnectDelay) {
 				return
@@ -187,7 +187,7 @@ func connManager(ctx context.Context, addr, apiKeyPath string, msgCh chan<- conn
 		}
 
 		if err := client.SendAuthWithParams(apiKey, authParams); err != nil {
-			fmt.Fprintf(os.Stderr, "ts6-status: auth send failed: %v\n", err)
+			fmt.Fprintf(os.Stderr, "ts-status: auth send failed: %v\n", err)
 			client.Close()
 			if !waitOrDone(ctx, reconnectDelay) {
 				return
@@ -195,7 +195,7 @@ func connManager(ctx context.Context, addr, apiKeyPath string, msgCh chan<- conn
 			continue
 		}
 
-		fmt.Fprintf(os.Stderr, "ts6-status: connected\n")
+		fmt.Fprintf(os.Stderr, "ts-status: connected\n")
 
 		connCtx, connCancel := context.WithCancel(ctx)
 		connErr := make(chan error, 1)
@@ -207,10 +207,10 @@ func connManager(ctx context.Context, addr, apiKeyPath string, msgCh chan<- conn
 		select {
 		case err := <-connErr:
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "ts6-status: read error: %v\n", err)
+				fmt.Fprintf(os.Stderr, "ts-status: read error: %v\n", err)
 			}
 		case <-resync.C:
-			fmt.Fprintf(os.Stderr, "ts6-status: resync timer fired\n")
+			fmt.Fprintf(os.Stderr, "ts-status: resync timer fired\n")
 		case <-ctx.Done():
 		}
 		resync.Stop()

@@ -1,35 +1,35 @@
-# ts6-status
+# ts-status
 
-NDJSON bridge for the TeamSpeak 6 Remote Apps WebSocket API.
+NDJSON bridge for the TeamSpeak Remote Apps WebSocket API.
 
-Connects to TeamSpeak 6's local WebSocket, tracks server/channel/client state, and emits newline-delimited JSON on stdout whenever state changes. Designed to be consumed by status bar widgets, scripts, or any tool that can read NDJSON.
+Connects to TeamSpeak's local WebSocket, tracks server/channel/client state, and emits newline-delimited JSON on stdout whenever state changes. Designed to be consumed by status bar widgets, scripts, or any tool that can read NDJSON.
 
 ## Install
 
 **AUR:**
 
 ```
-yay -S ts6-status
+yay -S ts-status
 ```
 
 **go install:**
 
 ```
-go install github.com/thisilike/ts6-status@latest
+go install github.com/thisilike/ts-status@latest
 ```
 
 **Manual:**
 
 ```
-git clone https://github.com/thisilike/ts6-status.git
-cd ts6-status
-go build -o ts6-status .
+git clone https://github.com/thisilike/ts-status.git
+cd ts-status
+go build -o ts-status .
 ```
 
 ## Usage
 
 ```
-ts6-status [--addr ws://localhost:5899] [--apikey-path path]
+ts-status [--addr ws://localhost:5899] [--apikey-path path]
 ```
 
 | Flag | Default | Description |
@@ -53,8 +53,8 @@ Error messages:
 
 ## First run
 
-On first connection, TeamSpeak 6 will show an approval prompt for the remote app. After approval, the API key is automatically persisted to the path specified by `--apikey-path`.
+On first connection, TeamSpeak will show an approval prompt for the remote app. After approval, the API key is automatically persisted to the path specified by `--apikey-path`.
 
 ## Related
 
-- [dms-plugin-teamspeak](https://github.com/thisilike/dms-plugin-teamspeak) — DMS bar widget that consumes ts6-status output
+- [dms-plugin-teamspeak](https://github.com/thisilike/dms-plugin-teamspeak) — DMS bar widget that consumes ts-status output

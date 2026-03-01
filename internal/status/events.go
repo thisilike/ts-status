@@ -3,7 +3,7 @@ package status
 import (
 	"strconv"
 
-	"github.com/thisilike/ts6-status/internal/connection"
+	"github.com/thisilike/ts-status/internal/connection"
 )
 
 // HandleEvent processes a single RawMessage and returns true if state changed.

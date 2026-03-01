@@ -1,4 +1,4 @@
-module github.com/thisilike/ts6-status
+module github.com/thisilike/ts-status
 
 go 1.25.0
 

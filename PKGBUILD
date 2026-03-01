@@ -1,10 +1,10 @@
 # Maintainer: thisilike
-pkgname=ts6-status
+pkgname=ts-status
 pkgver=1.0.0
 pkgrel=1
-pkgdesc='NDJSON bridge for the TeamSpeak 6 Remote Apps WebSocket API'
+pkgdesc='NDJSON bridge for the TeamSpeak Remote Apps WebSocket API'
 arch=('x86_64')
-url='https://github.com/thisilike/ts6-status'
+url='https://github.com/thisilike/ts-status'
 license=('MIT')
 makedepends=('go')
 depends=('glibc')
