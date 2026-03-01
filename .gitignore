@@ -1,0 +1,12 @@
+# Binaries
+ts-status
+*.exe
+
+# Data/runtime files
+data/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
