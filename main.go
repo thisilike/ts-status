@@ -3,24 +3,31 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/alecthomas/kong"
 	"github.com/thisilike/ts-status/internal/connection"
 	"github.com/thisilike/ts-status/internal/status"
 	"github.com/thisilike/ts-status/internal/storage"
 )
 
-const version = "1.0.0"
+const version = "2.0.0"
 
 const (
 	resyncInterval = 30 * time.Second
 	reconnectDelay = 2 * time.Second
 )
+
+var cli struct {
+	Addr       string           `help:"TeamSpeak Remote Apps WebSocket address." default:"ws://localhost:5899"`
+	ApiKeyPath string           `help:"Path to persist the API key." default:"data/status_apikey.txt" name:"apikey-path"`
+	MaxFps     int              `help:"Max output frames per second. 0 = unlimited." default:"0" name:"max-fps"`
+	Version    kong.VersionFlag `help:"Print version and exit." short:"v"`
+}
 
 var authParams = connection.AuthParams{
 	Identifier:  "net.thisilike.tsstatus",
@@ -59,17 +66,13 @@ type serverJSON struct {
 	ChannelMembers   []clientJSON `json:"channelMembers"`
 }
 
-type stateMessage struct {
-	Type    string       `json:"type"`
-	Servers []serverJSON `json:"servers"`
+type outputMessage struct {
+	Connected bool         `json:"connected"`
+	Error     string       `json:"error"`
+	Servers   []serverJSON `json:"servers"`
 }
 
-type errorMessage struct {
-	Type    string `json:"type"`
-	Message string `json:"message"`
-}
-
-func emitState(state *status.AppState) {
+func buildServerList(state *status.AppState) []serverJSON {
 	snap := state.Snapshot()
 	servers := make([]serverJSON, 0, len(snap))
 	for _, sc := range snap {
@@ -107,31 +110,38 @@ func emitState(state *status.AppState) {
 			ChannelMembers:   memberList,
 		})
 	}
-	msg := stateMessage{Type: "state", Servers: servers}
-	data, _ := json.Marshal(msg)
-	fmt.Println(string(data))
+	return servers
 }
 
-func emitError(message string) {
-	msg := errorMessage{Type: "error", Message: message}
+func emit(connected bool, errMsg string, state *status.AppState) {
+	var servers []serverJSON
+	if connected {
+		servers = buildServerList(state)
+	} else {
+		servers = []serverJSON{}
+	}
+	msg := outputMessage{
+		Connected: connected,
+		Error:     errMsg,
+		Servers:   servers,
+	}
 	data, _ := json.Marshal(msg)
 	fmt.Println(string(data))
 }
 
 func main() {
-	showVersion := flag.Bool("v", false, "Print version and exit")
-	flag.BoolVar(showVersion, "version", false, "Print version and exit")
-	addr := flag.String("addr", "ws://localhost:5899", "TeamSpeak Remote Apps WebSocket address")
-	apiKeyPath := flag.String("apikey-path", "data/status_apikey.txt", "Path to persist the API key")
-	flag.Parse()
+	kong.Parse(&cli, kong.Vars{"version": "ts-status " + version})
 
-	if *showVersion {
-		fmt.Println("ts-status " + version)
-		return
+	maxFps := cli.MaxFps
+	if maxFps < 0 {
+		maxFps = 0
+	} else if maxFps > 60 {
+		maxFps = 60
 	}
 
 	state := status.NewAppState()
 	msgCh := make(chan connection.RawMessage, 64)
+	connErrCh := make(chan string, 8)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -144,37 +154,94 @@ func main() {
 	}()
 
 	// Connection manager
-	go connManager(ctx, *addr, *apiKeyPath, msgCh)
+	go connManager(ctx, cli.Addr, cli.ApiKeyPath, msgCh, connErrCh)
 
-	// Event loop: WS messages → state updates → NDJSON output
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case msg, ok := <-msgCh:
-			if !ok {
+	// Emit initial disconnected state
+	emit(false, "", state)
+
+	connected := false
+	dirty := false
+	currentErr := ""
+
+	if maxFps > 0 {
+		// Throttled mode: emit at most maxFps times per second
+		ticker := time.NewTicker(time.Second / time.Duration(maxFps))
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
 				return
-			}
-			// Handle auth response: save API key and reset state for full resync
-			if msg.Type == "auth" && msg.Status != nil {
-				if code, ok := msg.Status["code"].(float64); ok && code == 0 {
-					if msg.Payload != nil {
-						if key, ok := msg.Payload["apiKey"].(string); ok && key != "" {
-							_ = storage.SaveAPIKey(*apiKeyPath, key)
+
+			case errMsg := <-connErrCh:
+				connected = false
+				currentErr = errMsg
+				state.Reset()
+				dirty = true
+
+			case msg, ok := <-msgCh:
+				if !ok {
+					return
+				}
+				if msg.Type == "auth" && msg.Status != nil {
+					if code, ok := msg.Status["code"].(float64); ok && code == 0 {
+						if msg.Payload != nil {
+							if key, ok := msg.Payload["apiKey"].(string); ok && key != "" {
+								_ = storage.SaveAPIKey(cli.ApiKeyPath, key)
+							}
 						}
+						state.Reset()
+						connected = true
+						currentErr = ""
 					}
-					state.Reset()
+				}
+				if state.HandleEvent(msg) {
+					dirty = true
+				}
+
+			case <-ticker.C:
+				if dirty {
+					emit(connected, currentErr, state)
+					dirty = false
 				}
 			}
+		}
+	} else {
+		// Unlimited mode: emit immediately on every change
+		for {
+			select {
+			case <-ctx.Done():
+				return
 
-			if state.HandleEvent(msg) {
-				emitState(state)
+			case errMsg := <-connErrCh:
+				connected = false
+				state.Reset()
+				emit(false, errMsg, state)
+
+			case msg, ok := <-msgCh:
+				if !ok {
+					return
+				}
+				if msg.Type == "auth" && msg.Status != nil {
+					if code, ok := msg.Status["code"].(float64); ok && code == 0 {
+						if msg.Payload != nil {
+							if key, ok := msg.Payload["apiKey"].(string); ok && key != "" {
+								_ = storage.SaveAPIKey(cli.ApiKeyPath, key)
+							}
+						}
+						state.Reset()
+						connected = true
+					}
+				}
+				if state.HandleEvent(msg) {
+					emit(connected, "", state)
+				}
 			}
 		}
 	}
 }
 
-func connManager(ctx context.Context, addr, apiKeyPath string, msgCh chan<- connection.RawMessage) {
+func connManager(ctx context.Context, addr, apiKeyPath string, msgCh chan<- connection.RawMessage, errCh chan<- string) {
 	for {
 		if ctx.Err() != nil {
 			return
@@ -188,7 +255,7 @@ func connManager(ctx context.Context, addr, apiKeyPath string, msgCh chan<- conn
 		})
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "ts-status: connection failed: %v\n", err)
-			emitError(fmt.Sprintf("connection failed: %v", err))
+			errCh <- fmt.Sprintf("connection failed: %v", err)
 			if !waitOrDone(ctx, reconnectDelay) {
 				return
 			}
